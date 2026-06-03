@@ -97,7 +97,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#eef2f7;color:#1e293
 <header class="hdr">
   <div>
     <h1>Kenmore CT — Scanner Replacement · Daily Redeployment Schedule</h1>
-    <p>Atrius Imaging · July 20 – August 28, 2026</p>
+    <p>Atrius Imaging · July 10 – August 28, 2026</p>
   </div>
   <div class="hdr-right">
     <button class="btn btn-undo" id="undoBtn" onclick="undo()" disabled style="font-size:12px;padding:5px 14px">↩ Undo</button>
@@ -108,7 +108,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#eef2f7;color:#1e293
 
 <div class="main">
 <div class="notice">
-  <strong>Scanner Replacement:</strong> Kenmore CT is offline Jul 20 – Aug 28.
+  <strong>Scanner Replacement:</strong> Kenmore CT is offline Jul 10 – Aug 14 (weeks through Aug 28 kept for possible extension).
   <strong>Weekdays:</strong> Kenmore techs sign up per day · target 3 techs/site.
   <strong>Weekends:</strong> Open sign-up · 2 techs + 1 tech aid per site.
   Staff dropdowns can be changed for last-minute swaps. All changes sync live.
@@ -140,6 +140,16 @@ const scheduleRef = db.ref('schedule');
 // ── Data ──
 
 const WEEKS = [
+  {label:"Week of July 10, 2026 (Closing — Partial Week)", days:[
+    {key:"d0710",day:"Fri",date:"Jul 10"},
+    {key:"d0711",day:"Sat",date:"Jul 11",weekend:true},{key:"d0712",day:"Sun",date:"Jul 12",weekend:true},
+  ]},
+  {label:"Week of July 13, 2026", days:[
+    {key:"d0713",day:"Mon",date:"Jul 13"},{key:"d0714",day:"Tue",date:"Jul 14"},
+    {key:"d0715",day:"Wed",date:"Jul 15"},{key:"d0716",day:"Thu",date:"Jul 16"},
+    {key:"d0717",day:"Fri",date:"Jul 17"},
+    {key:"d0718",day:"Sat",date:"Jul 18",weekend:true},{key:"d0719",day:"Sun",date:"Jul 19",weekend:true},
+  ]},
   {label:"Week of July 20, 2026", days:[
     {key:"d0720",day:"Mon",date:"Jul 20"},{key:"d0721",day:"Tue",date:"Jul 21"},
     {key:"d0722",day:"Wed",date:"Jul 22"},{key:"d0723",day:"Thu",date:"Jul 23"},
@@ -214,9 +224,9 @@ const REGULAR_OFF = {
 const SCHED_OFF = {
   NOR: {
     "Nancy Spaulding": ["d0805","d0819"],
-    "Dona Menutole":   ["d0729","d0812","d0826"],
+    "Dona Menutole":   ["d0715","d0729","d0812","d0826"],
     "Karen Calabro":   ["d0722","d0805","d0819"],
-    "Kelley Secord":   ["d0729","d0812","d0826"],
+    "Kelley Secord":   ["d0715","d0729","d0812","d0826"],
   },
 };
 
