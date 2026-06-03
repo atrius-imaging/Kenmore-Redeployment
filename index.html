@@ -63,9 +63,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#eef2f7;color:#1e293
 .slot-lbl{font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-top:4px;margin-bottom:2px}
 .wknd-sel{width:100%;font-size:10.5px;font-weight:500;border-radius:5px;border:1.5px solid #94a3b8;padding:3px;cursor:pointer;background:#fff;color:#334155}
 .wknd-sel.ws-filled{background:#dbeafe;border-color:#3b82f6;color:#1d4ed8;font-weight:600}
-.wknd-aid{width:100%;font-size:10.5px;border-radius:5px;border:1.5px dashed #94a3b8;padding:3px 4px;background:#fffbeb;color:#334155}
-.wknd-aid:focus{outline:none;border-color:#f59e0b;border-style:solid}
+.wknd-aid{width:100%;font-size:10.5px;border-radius:5px;border:1.5px dashed #94a3b8;padding:3px 4px;background:#fffbeb;color:#334155;cursor:pointer}
 .wknd-aid.aid-filled{border-color:#f59e0b;border-style:solid;background:#fef3c7;color:#92400e;font-weight:600}
+.aid-slot{margin-top:4px;padding-top:4px;border-top:1px dashed #fbbf24}
+.aid-lbl{font-size:9px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.aid-sel{width:100%;font-size:10.5px;font-weight:500;border-radius:5px;border:1.5px dashed #fbbf24;padding:3px;cursor:pointer;background:#fffbeb;color:#78350f}
+.aid-sel.aid-filled{border-color:#f59e0b;border-style:solid;background:#fef3c7;color:#92400e;font-weight:600}
 
 .who-off{background:#fff0f0;border:1.5px solid #fca5a5;border-radius:7px;padding:5px 6px;min-height:28px}
 .who-off-lbl{font-size:9px;font-weight:800;color:#dc2626;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
@@ -251,6 +254,8 @@ const KENMORE = [
 ];
 
 // Days when a Kenmore tech is regular staff elsewhere (not available for redeployment)
+const TECH_AIDS = ["Jennixsa","Tayla","Jordan","Lori"];
+
 const KENMORE_REGULAR_DAYS = {
   k3: { dows:[1], site:"WEY" }, // Stacie Joyce — regular Weymouth Mon
 };
@@ -267,6 +272,8 @@ const ALL_TECHS = [
 let signups = {};
 KENMORE.forEach(t => { signups[t.id] = {}; });
 let weekendSignups = {};
+let techAidSignups = {}; // techAidSignups[siteId][dayKey] = aidName
+SITES.forEach(s => { techAidSignups[s.id] = {}; });
 // staffOverrides[siteId][staffName][dayKey] = techName | "OFF" | "" (empty = default)
 let staffOverrides = {};
 SITES.forEach(s => { staffOverrides[s.id] = {}; s.staff.forEach(n => { staffOverrides[s.id][n] = {}; }); });
@@ -340,9 +347,17 @@ function applyDefaults() {
 
 // ── Firebase ──
 
+function updateTechAid(siteId, dayKey, sel) {
+  const val = sel.value;
+  if(!techAidSignups[siteId]) techAidSignups[siteId] = {};
+  techAidSignups[siteId][dayKey] = val;
+  sel.className = "aid-sel" + (val ? " aid-filled" : "");
+  saveToFirebase();
+}
+
 function saveToFirebase(skipHistory) {
   if(!skipHistory) pushHistory();
-  scheduleRef.set({signups, weekendSignups, staffOverrides});
+  scheduleRef.set({signups, weekendSignups, staffOverrides, techAidSignups});
 }
 
 // ── Build DOM ──
@@ -378,9 +393,11 @@ function buildAll() {
               <select class="wknd-sel${sl.t2?" ws-filled":""}" id="ws_${site.id}_${d.key}_t2"
                 onchange="updateWeekend('${site.id}','${d.key}','t2',this)">${techOpts(sl.t2)}</select>
               <div class="slot-lbl">Tech Aid</div>
-              <input type="text" class="wknd-aid${sl.aid?" aid-filled":""}"
-                id="ws_${site.id}_${d.key}_aid" placeholder="Tech Aid name" value="${sl.aid||""}"
+              <select class="wknd-aid${sl.aid?" aid-filled":""}" id="ws_${site.id}_${d.key}_aid"
                 onchange="updateWeekendAid('${site.id}','${d.key}',this)">
+                <option value="">— None —</option>
+                ${TECH_AIDS.map(a=>`<option value="${a}"${a===sl.aid?" selected":""}>${a}</option>`).join("")}
+              </select>
             </div>
             <div class="site-total" id="tot_${site.id}_${d.key}">—</div>`;
           col.appendChild(block);
@@ -407,6 +424,7 @@ function buildAll() {
                 ${staffOpts(n, curVal)}
               </select></div>`;
           });
+          const curAid = (techAidSignups[site.id]&&techAidSignups[site.id][d.key])||"";
           block.innerHTML = `
             <div class="sb-title">${site.name}</div>
             ${staffHtml}
@@ -416,6 +434,14 @@ function buildAll() {
                 onchange="assignKenmore('${site.id}','${d.key}',this)">
                 <option value="">— None —</option>
                 ${KENMORE.filter(t=>{ const r=KENMORE_REGULAR_DAYS[t.id]; return !(r&&r.dows.includes(dayOfWeek(d.key))); }).map(t=>`<option value="${t.id}">${t.name}</option>`).join("")}
+              </select>
+            </div>
+            <div class="aid-slot">
+              <div class="aid-lbl">Tech Aid</div>
+              <select class="aid-sel${curAid?" aid-filled":""}" id="aid_${site.id}_${d.key}"
+                onchange="updateTechAid('${site.id}','${d.key}',this)">
+                <option value="">— None —</option>
+                ${TECH_AIDS.map(a=>`<option value="${a}"${a===curAid?" selected":""}>${a}</option>`).join("")}
               </select>
             </div>
             <div class="site-total" id="tot_${site.id}_${d.key}">—</div>`;
@@ -559,12 +585,12 @@ function updateWeekend(siteId, dayKey, slot, sel) {
   saveToFirebase();
 }
 
-function updateWeekendAid(siteId, dayKey, input) {
-  const val = input.value.trim();
+function updateWeekendAid(siteId, dayKey, sel) {
+  const val = sel.value;
   if(!weekendSignups[dayKey]) weekendSignups[dayKey] = {};
   if(!weekendSignups[dayKey][siteId]) weekendSignups[dayKey][siteId] = {t1:"",t2:"",aid:""};
   weekendSignups[dayKey][siteId].aid = val;
-  input.className = "wknd-aid" + (val ? " aid-filled" : "");
+  sel.className = "wknd-aid" + (val ? " aid-filled" : "");
   refreshWeekendDay(dayKey);
   saveToFirebase();
 }
@@ -607,6 +633,7 @@ function init() {
     if(data) {
       if(data.signups) KENMORE.forEach(t => { if(data.signups[t.id]) signups[t.id] = data.signups[t.id]; });
       weekendSignups = data.weekendSignups || {};
+      if(data.techAidSignups) SITES.forEach(s => { if(data.techAidSignups[s.id]) techAidSignups[s.id] = data.techAidSignups[s.id]; });
       if(data.staffOverrides) {
         SITES.forEach(s => {
           if(data.staffOverrides[s.id]) {
