@@ -23,7 +23,7 @@ function upcomingEmail(tech,label,exp,days){const tag=days===7?"FINAL NOTICE":da
 function expiredEmail(tech,label,exp,daysOver){const dw=daysOver===1?"day":"days";return{subject:"[EXPIRED - "+daysOver+" "+dw+" overdue] "+label+" - "+tech.firstName+" "+tech.lastName,text:"Hi "+tech.firstName+",\n\nYour "+label+" EXPIRED on "+fmt(exp)+" - "+daysOver+" "+dw+" ago.\n\nPlease contact your supervisor immediately.\n\nThank you,\nCT Imaging Department"};}
 function managerSummaryEmail(items){const lines=items.map(function(i){return"  - "+i.tech.firstName+" "+i.tech.lastName+" - "+i.label+" (expired "+fmt(i.exp)+", "+i.daysOver+" days ago)";}).join("\n");return{subject:"[Daily Alert] "+items.length+" Expired Credentials Require Attention",text:"Hello,\n\nThe following credentials are EXPIRED:\n\n"+lines+"\n\nPlease follow up.\n\nThank you,\nCT Imaging Department"};}
 async function main(){console.log("Starting...");if(!GMAIL_USER||!GMAIL_PASSWORD){console.error("ERROR: Missing secrets.");process.exit(1);}
-const transport=nodemailer.createTransport({service:"gmail",auth:{user:GMAIL_USER,pass:GMAIL_PASSWORD}});
+const transport=nodemailer.createTransport({host:"smtp.gmail.com",port:587,secure:false,auth:{user:GMAIL_USER.trim(),pass:GMAIL_PASSWORD.trim()}});
 try{await transport.verify();console.log("SMTP OK!");}catch(e){console.error("SMTP FAILED:",e.message);process.exit(1);}
 const from="CT Credentials Tracker <"+GMAIL_USER+">";
 const expired=[];let sent=0,failed=0;
