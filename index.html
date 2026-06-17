@@ -646,9 +646,8 @@ function init() {
           }
         });
       }
-    } else {
-      applyDefaults();
     }
+    applyDefaults();
     _firebaseReady = true;
     refreshAllDays();
     const st = document.getElementById("liveStatus");
