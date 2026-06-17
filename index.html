@@ -278,6 +278,8 @@ SITES.forEach(s => { techAidSignups[s.id] = {}; });
 let staffOverrides = {};
 SITES.forEach(s => { staffOverrides[s.id] = {}; s.staff.forEach(n => { staffOverrides[s.id][n] = {}; }); });
 
+let _firebaseReady = false; // guard: block saves until Firebase data has loaded
+
 // ── History (undo) ──
 const MAX_HISTORY = 20;
 let history = [];
@@ -356,6 +358,7 @@ function updateTechAid(siteId, dayKey, sel) {
 }
 
 function saveToFirebase(skipHistory) {
+  if(!_firebaseReady) return;
   if(!skipHistory) pushHistory();
   scheduleRef.set({signups, weekendSignups, staffOverrides, techAidSignups});
 }
@@ -645,8 +648,8 @@ function init() {
       }
     } else {
       applyDefaults();
-      saveToFirebase();
     }
+    _firebaseReady = true;
     refreshAllDays();
     const st = document.getElementById("liveStatus");
     st.className = "live-dot connected";
