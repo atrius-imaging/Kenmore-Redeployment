@@ -535,6 +535,24 @@ function refreshDay(dayKey) {
       });
     }
 
+    // Update staff override dropdowns
+    site.staff.forEach(n => {
+      const safeId = n.replace(/\s+/g,"_");
+      const sSel = document.getElementById(`ss_${site.id}_${safeId}_${dayKey}`);
+      if(!sSel) return;
+      const status = staffStatus(site.id, n, dayKey);
+      if(status === "restricted" || status === "sched-off") return;
+      const ov = effectiveName(site.id, n, dayKey);
+      const defaultVal = status === "pto" ? "OFF" : n;
+      const curVal = ov !== null ? ov : defaultVal;
+      sSel.value = curVal;
+      sSel.className = "staff-sel " + (
+        status === "pto" && ov === null ? "s-pto" :
+        curVal === "OFF" ? "s-off" :
+        ov !== null && ov !== n ? "s-override" : ""
+      );
+    });
+
     // Total
     const totEl = document.getElementById(`tot_${site.id}_${dayKey}`);
     if(totEl) {
