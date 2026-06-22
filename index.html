@@ -85,6 +85,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#eef2f7;color:#1e293
 .btn-print{background:#0f766e;color:#fff}.btn-print:hover{background:#0d5e57}
 .btn-clear{background:#fff;color:#dc2626;border:1.5px solid #fca5a5}.btn-clear:hover{background:#fef2f2}
 .btn-undo{background:#fff;color:#1d4ed8;border:1.5px solid #93c5fd}.btn-undo:hover{background:#eff6ff}.btn-undo:disabled{opacity:.35;cursor:not-allowed}
+.btn-restore{background:#fff;color:#7c3aed;border:1.5px solid #c4b5fd}.btn-restore:hover{background:#f5f3ff}.btn-restore:disabled{opacity:.35;cursor:not-allowed}
+.backup-ts{font-size:10px;color:rgba(255,255,255,.55);white-space:nowrap}
 
 @media print{
   body{background:#fff}
@@ -104,6 +106,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#eef2f7;color:#1e293
   </div>
   <div class="hdr-right">
     <button class="btn btn-undo" id="undoBtn" onclick="undo()" disabled style="font-size:12px;padding:5px 14px">↩ Undo</button>
+    <button class="btn btn-restore" id="restoreBtn" onclick="restoreBackup()" disabled style="font-size:12px;padding:5px 14px">⟳ Restore Backup</button>
+    <span class="backup-ts" id="backupTs"></span>
     <span class="live-dot connecting" id="liveStatus"><span class="dot"></span>Connecting…</span>
     <span class="hdr-badge">8 Weeks · Mon–Sun</span>
   </div>
@@ -360,7 +364,62 @@ function updateTechAid(siteId, dayKey, sel) {
 function saveToFirebase(skipHistory) {
   if(!_firebaseReady) return;
   if(!skipHistory) pushHistory();
-  scheduleRef.set({signups, weekendSignups, staffOverrides, techAidSignups});
+  const state = {signups, weekendSignups, staffOverrides, techAidSignups};
+  scheduleRef.set(state).catch(err => console.error('Save failed:', err));
+  writeBackup(state);
+}
+
+function writeBackup(state) {
+  const ts = new Date().toISOString();
+  const payload = {...state, _savedAt: ts};
+  db.ref('backup').set(payload).catch(() => {});
+  try { localStorage.setItem('kenmore_backup', JSON.stringify(payload)); } catch(e) {}
+  updateBackupTs(ts);
+}
+
+function updateBackupTs(ts) {
+  const el = document.getElementById('backupTs');
+  if(!el || !ts) return;
+  const d = new Date(ts);
+  el.textContent = `Backup: ${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})} ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`;
+  document.getElementById('restoreBtn').disabled = false;
+}
+
+function restoreBackup() {
+  db.ref('backup').once('value', snap => {
+    const data = snap.val();
+    if(data && data._savedAt) {
+      const when = new Date(data._savedAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+      if(!confirm(`Restore backup from ${when}?\n\nThis will replace all current sign-ups with the saved backup.`)) return;
+      if(data.signups) KENMORE.forEach(t => { if(data.signups[t.id]) signups[t.id] = data.signups[t.id]; });
+      weekendSignups = data.weekendSignups || {};
+      if(data.techAidSignups) SITES.forEach(s => { if(data.techAidSignups[s.id]) techAidSignups[s.id] = data.techAidSignups[s.id]; });
+      if(data.staffOverrides) SITES.forEach(s => { if(data.staffOverrides[s.id]) s.staff.forEach(n => { if(data.staffOverrides[s.id][n]) staffOverrides[s.id][n] = data.staffOverrides[s.id][n]; }); });
+      applyDefaults();
+      buildAll();
+      saveToFirebase(true);
+      alert('Backup restored successfully.');
+    } else {
+      // Fall back to localStorage
+      try {
+        const local = JSON.parse(localStorage.getItem('kenmore_backup'));
+        if(local && local._savedAt) {
+          const when = new Date(local._savedAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+          if(!confirm(`Restore local backup from ${when}?`)) return;
+          if(local.signups) KENMORE.forEach(t => { if(local.signups[t.id]) signups[t.id] = local.signups[t.id]; });
+          weekendSignups = local.weekendSignups || {};
+          if(local.techAidSignups) SITES.forEach(s => { if(local.techAidSignups[s.id]) techAidSignups[s.id] = local.techAidSignups[s.id]; });
+          if(local.staffOverrides) SITES.forEach(s => { if(local.staffOverrides[s.id]) s.staff.forEach(n => { if(local.staffOverrides[s.id][n]) staffOverrides[s.id][n] = local.staffOverrides[s.id][n]; }); });
+          applyDefaults();
+          buildAll();
+          saveToFirebase(true);
+          alert('Local backup restored successfully.');
+        } else {
+          alert('No backup found.');
+        }
+      } catch(e) { alert('No backup found.'); }
+    }
+  });
 }
 
 // ── Build DOM ──
@@ -479,8 +538,7 @@ function overrideStaff(siteId, staffName, dayKey, sel) {
     curVal === "OFF" ? "s-off" :
     ov !== null && ov !== staffName ? "s-override" : ""
   );
-  refreshDay(dayKey);
-  refreshWhoOff(dayKey);
+  try { refreshDay(dayKey); refreshWhoOff(dayKey); } catch(e) { console.error('refreshDay error:', e); }
   saveToFirebase();
 }
 
@@ -489,8 +547,7 @@ function assignKenmore(siteId, dayKey, sel) {
   KENMORE.forEach(t => { if(signups[t.id][dayKey] === siteId) signups[t.id][dayKey] = ""; });
   if(techId && signups[techId][dayKey] !== "PTO") signups[techId][dayKey] = "";
   if(techId) signups[techId][dayKey] = siteId;
-  refreshDay(dayKey);
-  refreshWhoOff(dayKey);
+  try { refreshDay(dayKey); refreshWhoOff(dayKey); } catch(e) { console.error('refreshDay error:', e); }
   saveToFirebase();
 }
 
@@ -671,6 +728,8 @@ function init() {
     const st = document.getElementById("liveStatus");
     st.className = "live-dot connected";
     st.innerHTML = `<span class="dot"></span>Live`;
+    // Load backup timestamp
+    db.ref('backup/_savedAt').once('value', bSnap => { if(bSnap.val()) updateBackupTs(bSnap.val()); });
   });
 }
 
