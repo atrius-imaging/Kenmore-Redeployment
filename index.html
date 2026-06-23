@@ -245,18 +245,24 @@ const SCHED_OFF = {
 // Day-of-week restrictions (getDay: 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat)
 const STAFF_DAY_RESTRICTIONS = {
   NOR: {
-    "Dona Menutole":  [1,2,3],
+    "Dona Menutole":  [1,2],
     "Nancy Spaulding":[1,2],
     "Karen Calabro":  [4,5],
-    "Kelley Secord":  [3,4,5],
+    "Kelley Secord":  [4,5],
   },
   WEY: { "Christine Sorrento":[3], "Mary Mello":[1,2,4,5], "Christina Desmond":[2,3,4,5], "Stacie Joyce":[1] },
   PLY: { "Christine Sorrento":[1,2,4] },
 };
 
 // One-time day exceptions: staff appear on a specific date outside their normal restriction
+// NOR Wednesdays alternate: Week A = Dona+Kelley, Week B = Nancy+Karen (Jul15=B)
 const SCHED_ON_DAYS = {
-  NOR: { "Nancy Spaulding": ["d0715"] },
+  NOR: {
+    "Nancy Spaulding": ["d0715","d0729","d0812","d0826"],
+    "Karen Calabro":   ["d0715","d0729","d0812","d0826"],
+    "Dona Menutole":   ["d0722","d0805","d0819"],
+    "Kelley Secord":   ["d0722","d0805","d0819"],
+  },
 };
 
 const KENMORE = [
