@@ -637,7 +637,8 @@ function getOffNames(dayKey) {
     });
   });
   KENMORE.forEach(t => {
-    if(signups[t.id][dayKey] === "PTO" && !off.includes(t.name)) off.push(t.name);
+    const isPTO = (KENMORE_PTO[t.id] || []).includes(dayKey) || signups[t.id][dayKey] === "PTO";
+    if(isPTO && !off.includes(t.name)) off.push(t.name);
   });
   return off;
 }
