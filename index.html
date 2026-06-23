@@ -347,7 +347,7 @@ function staffOpts(defaultName, selectedVal) {
 
 function applyDefaults() {
   KENMORE.forEach(t => {
-    (KENMORE_PTO[t.id]||[]).forEach(dk => { if(!signups[t.id][dk]) signups[t.id][dk] = "PTO"; });
+    (KENMORE_PTO[t.id]||[]).forEach(dk => { signups[t.id][dk] = "PTO"; });
   });
 }
 
