@@ -57,6 +57,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#eef2f7;color:#1e293
 .k-lbl{font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
 .k-sel{width:100%;font-size:11px;font-weight:600;border-radius:5px;border:1.5px solid #94a3b8;padding:3px;cursor:pointer;background:#fff;color:#475569}
 .k-sel.ks-filled{background:#dbeafe;border-color:#3b82f6;color:#1d4ed8}
+.k-pto-list{display:flex;flex-wrap:wrap;gap:2px;margin-top:3px}
+.k-pto-chip{background:#fee2e2;color:#dc2626;border-radius:4px;padding:2px 6px;font-size:9.5px;font-weight:600;font-style:italic}
 
 /* weekend */
 .wknd-slots{display:flex;flex-direction:column;gap:3px}
@@ -497,6 +499,7 @@ function buildAll() {
                 <option value="">— None —</option>
                 ${KENMORE.filter(t=>{ const r=KENMORE_REGULAR_DAYS[t.id]; return !(r&&r.dows.includes(dayOfWeek(d.key))); }).map(t=>`<option value="${t.id}">${t.name}</option>`).join("")}
               </select>
+              <div class="k-pto-list" id="kpto_${site.id}_${d.key}"></div>
             </div>
             <div class="aid-slot">
               <div class="aid-lbl">Tech Aid</div>
@@ -590,6 +593,12 @@ function refreshDay(dayKey) {
           : elsewhere ? `${t.name} → ${signups[t.id][dayKey]}`
           : t.name;
       });
+      // Update PTO chips below dropdown
+      const kPtoEl = document.getElementById(`kpto_${site.id}_${dayKey}`);
+      if(kPtoEl) {
+        const ptoTechs = KENMORE.filter(t => (KENMORE_PTO[t.id]||[]).includes(dayKey));
+        kPtoEl.innerHTML = ptoTechs.map(t => `<span class="k-pto-chip">${t.name.split(" ")[0]} — OFF</span>`).join("");
+      }
     }
 
     // Update staff override dropdowns
