@@ -254,6 +254,11 @@ const STAFF_DAY_RESTRICTIONS = {
   PLY: { "Christine Sorrento":[1,2,4] },
 };
 
+// One-time day exceptions: staff appear on a specific date outside their normal restriction
+const SCHED_ON_DAYS = {
+  NOR: { "Nancy Spaulding": ["d0715"] },
+};
+
 const KENMORE = [
   {id:"k1", name:"Stacey Hurley"},
   {id:"k2", name:"Anthony Gattonini"},
@@ -329,7 +334,8 @@ function dayOfWeek(dayKey) {
 function staffStatus(siteId, staffName, dayKey) {
   const dow = dayOfWeek(dayKey);
   const restrict = STAFF_DAY_RESTRICTIONS[siteId] && STAFF_DAY_RESTRICTIONS[siteId][staffName];
-  if(restrict && !restrict.includes(dow)) return "restricted";
+  const schedOnDays = (SCHED_ON_DAYS[siteId] && SCHED_ON_DAYS[siteId][staffName]) || [];
+  if(restrict && !restrict.includes(dow) && !schedOnDays.includes(dayKey)) return "restricted";
   const schedOff = SCHED_OFF[siteId] && SCHED_OFF[siteId][staffName] || [];
   if(schedOff.includes(dayKey)) return "sched-off";
   const pto = REGULAR_OFF[siteId] && REGULAR_OFF[siteId][staffName] || [];
