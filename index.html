@@ -58,7 +58,9 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#eef2f7;color:#1e293
 .k-sel{width:100%;font-size:11px;font-weight:600;border-radius:5px;border:1.5px solid #94a3b8;padding:3px;cursor:pointer;background:#fff;color:#475569}
 .k-sel.ks-filled{background:#dbeafe;border-color:#3b82f6;color:#1d4ed8}
 .k-pto-list{display:flex;flex-wrap:wrap;gap:2px;margin-top:3px}
-.k-pto-chip{background:#fee2e2;color:#dc2626;border-radius:4px;padding:2px 6px;font-size:9.5px;font-weight:600;font-style:italic}
+.k-pto-chip{background:#fee2e2;color:#dc2626;border-radius:4px;padding:2px 6px;font-size:9.5px;font-weight:600;font-style:italic;display:inline-flex;align-items:center;gap:3px}
+.k-pto-chip .pto-x{cursor:pointer;font-style:normal;opacity:.65;font-weight:800}.k-pto-chip .pto-x:hover{opacity:1}
+.k-add-sel{width:100%;font-size:10px;border-radius:5px;border:1.5px dashed #fca5a5;padding:2px;cursor:pointer;background:#fff7f7;color:#b91c1c;margin-top:4px}
 
 /* weekend */
 .wknd-slots{display:flex;flex-direction:column;gap:3px}
@@ -283,6 +285,8 @@ SITES.forEach(s => { techAidSignups[s.id] = {}; });
 // staffOverrides[siteId][staffName][dayKey] = techName | "OFF" | "" (empty = default)
 let staffOverrides = {};
 SITES.forEach(s => { staffOverrides[s.id] = {}; s.staff.forEach(n => { staffOverrides[s.id][n] = {}; }); });
+let kenmoreOffDays = {};
+KENMORE.forEach(t => { kenmoreOffDays[t.id] = {}; });
 
 let _firebaseReady = false; // guard: block saves until Firebase data has loaded
 
@@ -291,7 +295,7 @@ const MAX_HISTORY = 20;
 let history = [];
 
 function snapshot() {
-  return JSON.stringify({signups, weekendSignups, staffOverrides});
+  return JSON.stringify({signups, weekendSignups, staffOverrides, kenmoreOffDays});
 }
 
 function pushHistory() {
@@ -306,6 +310,9 @@ function undo() {
   signups = prev.signups;
   weekendSignups = prev.weekendSignups;
   staffOverrides = prev.staffOverrides;
+  kenmoreOffDays = prev.kenmoreOffDays || {};
+  KENMORE.forEach(t => { if(!kenmoreOffDays[t.id]) kenmoreOffDays[t.id] = {}; });
+  applyDefaults();
   buildAll();
   saveToFirebase(true);
   document.getElementById("undoBtn").disabled = history.length === 0;
@@ -347,9 +354,19 @@ function staffOpts(defaultName, selectedVal) {
   ).join("") + offOpt;
 }
 
+function isTechPTO(techId, dayKey) {
+  const ov = kenmoreOffDays[techId] && kenmoreOffDays[techId][dayKey];
+  if(ov !== undefined) return ov === true;
+  return (KENMORE_PTO[techId] || []).includes(dayKey);
+}
+
 function applyDefaults() {
   KENMORE.forEach(t => {
-    (KENMORE_PTO[t.id]||[]).forEach(dk => { signups[t.id][dk] = "PTO"; });
+    WEEKS.forEach(w => w.days.forEach(d => {
+      if(d.weekend) return;
+      if(isTechPTO(t.id, d.key)) signups[t.id][d.key] = "PTO";
+      else if(signups[t.id][d.key] === "PTO") signups[t.id][d.key] = "";
+    }));
   });
 }
 
@@ -366,7 +383,7 @@ function updateTechAid(siteId, dayKey, sel) {
 function saveToFirebase(skipHistory) {
   if(!_firebaseReady) return;
   if(!skipHistory) pushHistory();
-  const state = {signups, weekendSignups, staffOverrides, techAidSignups};
+  const state = {signups, weekendSignups, staffOverrides, techAidSignups, kenmoreOffDays};
   scheduleRef.set(state).catch(err => console.error('Save failed:', err));
   writeBackup(state);
 }
@@ -500,6 +517,9 @@ function buildAll() {
                 ${KENMORE.filter(t=>{ const r=KENMORE_REGULAR_DAYS[t.id]; return !(r&&r.dows.includes(dayOfWeek(d.key))); }).map(t=>`<option value="${t.id}">${t.name}</option>`).join("")}
               </select>
               <div class="k-pto-list" id="kpto_${site.id}_${d.key}"></div>
+              <select class="k-add-sel" id="kadd_${site.id}_${d.key}" onchange="setKenmorePTO(this.value,'${d.key}',true,this)">
+                <option value="">+ Mark tech off…</option>
+              </select>
             </div>
             <div class="aid-slot">
               <div class="aid-lbl">Tech Aid</div>
@@ -542,6 +562,16 @@ function overrideStaff(siteId, staffName, dayKey, sel) {
     ov !== null && ov !== staffName ? "s-override" : ""
   );
   try { refreshDay(dayKey); refreshWhoOff(dayKey); } catch(e) { console.error('refreshDay error:', e); }
+  saveToFirebase();
+}
+
+function setKenmorePTO(techId, dayKey, isOff, sel) {
+  if(!techId) return;
+  if(!kenmoreOffDays[techId]) kenmoreOffDays[techId] = {};
+  kenmoreOffDays[techId][dayKey] = isOff;
+  applyDefaults();
+  if(sel) sel.value = "";
+  try { refreshDay(dayKey); refreshWhoOff(dayKey); } catch(e) { console.error(e); }
   saveToFirebase();
 }
 
@@ -593,11 +623,21 @@ function refreshDay(dayKey) {
           : elsewhere ? `${t.name} → ${signups[t.id][dayKey]}`
           : t.name;
       });
-      // Update PTO chips below dropdown
+      // Update PTO chips and add-PTO select below dropdown
       const kPtoEl = document.getElementById(`kpto_${site.id}_${dayKey}`);
       if(kPtoEl) {
-        const ptoTechs = KENMORE.filter(t => (KENMORE_PTO[t.id]||[]).includes(dayKey));
-        kPtoEl.innerHTML = ptoTechs.map(t => `<span class="k-pto-chip">${t.name.split(" ")[0]} — OFF</span>`).join("");
+        const ptoTechs = KENMORE.filter(t => isTechPTO(t.id, dayKey));
+        kPtoEl.innerHTML = ptoTechs.map(t =>
+          `<span class="k-pto-chip">${t.name.split(" ")[0]} — OFF <span class="pto-x" onclick="setKenmorePTO('${t.id}','${dayKey}',false)" title="Remove PTO">✕</span></span>`
+        ).join("");
+      }
+      const kAddEl = document.getElementById(`kadd_${site.id}_${dayKey}`);
+      if(kAddEl) {
+        const avail = KENMORE.filter(t => !isTechPTO(t.id, dayKey));
+        kAddEl.style.display = avail.length ? "" : "none";
+        kAddEl.innerHTML = `<option value="">+ Mark tech off…</option>` +
+          avail.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
+        kAddEl.value = "";
       }
     }
 
@@ -646,8 +686,7 @@ function getOffNames(dayKey) {
     });
   });
   KENMORE.forEach(t => {
-    const isPTO = (KENMORE_PTO[t.id] || []).includes(dayKey) || signups[t.id][dayKey] === "PTO";
-    if(isPTO && !off.includes(t.name)) off.push(t.name);
+    if(isTechPTO(t.id, dayKey) && !off.includes(t.name)) off.push(t.name);
   });
   return off;
 }
@@ -731,6 +770,7 @@ function init() {
           }
         });
       }
+      if(data.kenmoreOffDays) KENMORE.forEach(t => { if(data.kenmoreOffDays[t.id]) kenmoreOffDays[t.id] = data.kenmoreOffDays[t.id]; });
     }
     applyDefaults();
     _firebaseReady = true;
