@@ -386,10 +386,22 @@ function updateTechAid(siteId, dayKey, sel) {
 }
 
 function saveToFirebase(skipHistory) {
-  if(!_firebaseReady) return;
+  if(!_firebaseReady) {
+    const st = document.getElementById("liveStatus");
+    if(st) { st.className = "live-dot"; st.innerHTML = `<span class="dot"></span>Not ready — retry`; }
+    return;
+  }
   if(!skipHistory) pushHistory();
   const state = {signups, weekendSignups, staffOverrides, techAidSignups, kenmoreOffDays};
-  scheduleRef.set(state).catch(err => console.error('Save failed:', err));
+  scheduleRef.set(state).then(() => {
+    const st = document.getElementById("liveStatus");
+    if(st) { st.className = "live-dot connected"; st.innerHTML = `<span class="dot"></span>Saved`; setTimeout(()=>{ st.innerHTML=`<span class="dot"></span>Live`; }, 2000); }
+  }).catch(err => {
+    console.error('Save failed:', err);
+    const st = document.getElementById("liveStatus");
+    if(st) { st.className = "live-dot"; st.innerHTML = `<span class="dot"></span>Save failed!`; }
+    alert('Save failed: ' + err.message);
+  });
   writeBackup(state);
 }
 
