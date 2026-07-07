@@ -676,6 +676,14 @@ function refreshDay(dayKey) {
       );
     });
 
+    // Tech aid dropdown
+    const aidEl = document.getElementById(`aid_${site.id}_${dayKey}`);
+    if(aidEl) {
+      const curAid = (techAidSignups[site.id] && techAidSignups[site.id][dayKey]) || "";
+      aidEl.value = curAid;
+      aidEl.className = "aid-sel" + (curAid ? " aid-filled" : "");
+    }
+
     // Total
     const totEl = document.getElementById(`tot_${site.id}_${dayKey}`);
     if(totEl) {
