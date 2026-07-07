@@ -73,6 +73,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#eef2f7;color:#1e293
 .aid-lbl{font-size:9px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
 .aid-sel{width:100%;font-size:10.5px;font-weight:500;border-radius:5px;border:1.5px dashed #fbbf24;padding:3px;cursor:pointer;background:#fffbeb;color:#78350f}
 .aid-sel.aid-filled{border-color:#f59e0b;border-style:solid;background:#fef3c7;color:#92400e;font-weight:600}
+.aid-sel.aid-off{border-color:#fca5a5;border-style:solid;background:#fee2e2;color:#dc2626;font-weight:600;font-style:italic}
 
 .who-off{background:#fff0f0;border:1.5px solid #fca5a5;border-radius:7px;padding:5px 6px;min-height:28px}
 .who-off-lbl{font-size:9px;font-weight:800;color:#dc2626;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
@@ -381,7 +382,7 @@ function updateTechAid(siteId, dayKey, sel) {
   const val = sel.value;
   if(!techAidSignups[siteId]) techAidSignups[siteId] = {};
   techAidSignups[siteId][dayKey] = val;
-  sel.className = "aid-sel" + (val ? " aid-filled" : "");
+  sel.className = "aid-sel" + (val === "OFF" ? " aid-off" : val ? " aid-filled" : "");
   saveToFirebase();
 }
 
@@ -540,9 +541,10 @@ function buildAll() {
             </div>
             <div class="aid-slot">
               <div class="aid-lbl">Tech Aid</div>
-              <select class="aid-sel${curAid?" aid-filled":""}" id="aid_${site.id}_${d.key}"
+              <select class="aid-sel${curAid==="OFF"?" aid-off":curAid?" aid-filled":""}" id="aid_${site.id}_${d.key}"
                 onchange="updateTechAid('${site.id}','${d.key}',this)">
                 <option value="">— None —</option>
+                <option value="OFF"${curAid==="OFF"?" selected":""}>— OFF —</option>
                 ${TECH_AIDS.map(a=>`<option value="${a}"${a===curAid?" selected":""}>${a}</option>`).join("")}
               </select>
             </div>
@@ -681,7 +683,7 @@ function refreshDay(dayKey) {
     if(aidEl) {
       const curAid = (techAidSignups[site.id] && techAidSignups[site.id][dayKey]) || "";
       aidEl.value = curAid;
-      aidEl.className = "aid-sel" + (curAid ? " aid-filled" : "");
+      aidEl.className = "aid-sel" + (curAid === "OFF" ? " aid-off" : curAid ? " aid-filled" : "");
     }
 
     // Total
